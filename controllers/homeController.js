@@ -8,6 +8,8 @@ exports.home = BigPromise(async(req,res)=>{
         greeting:"Hello from API"
     })
 });
+
+
 exports.homeDummy =(req,res)=>{
     res.status(200).json({
         success:true,
