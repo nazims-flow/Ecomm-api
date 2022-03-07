@@ -3,6 +3,7 @@ const BigPromise = require('../middlewares/bigPromise');
 const CustomError = require('../utils/customError');
 const cloudinary = require('cloudinary');
 const WhereClause = require('../utils/whereClause');
+const { customRole } = require('../middlewares/user');
 
 
 exports.addProduct = BigPromise(async( req, res , next)=> {
@@ -72,9 +73,151 @@ exports.getAllProduct= BigPromise(async (req, res, next)=>{
         totalcountProduct
 
     })
+});
+
+exports.getOneProduct= BigPromise(async (req, res, next)=>{
+
+   const product = await  Product.findById(req.params.id)
+
+   if(!product){
+       return next(new CustomError('No product found with this id' , 401))
+   }
+
+   res.status(200).json({
+
+    success: true,
+    product,
+
+   })
+    
+});
+
+exports.adminGetAllProduct = BigPromise(async (req,res, next)=>{
+    const products = await Product.find()
+    
+
+    res.status(200).json({
+        success: true,
+        products
+    })
+})
+
+exports.adminUpdateOneProduct = BigPromise(async (req,res, next)=>{
+    let product = await Product.findById(req.params.id);
+
+    let imagesArray = []
+
+    if(!product){
+        return next(new CustomError('No product found with this id' , 401))
+    }
+
+    if(req.files) {
+        // destroy the existing image
+        for (let index = 0; index < product.photos.length ; index++) {
+            const result = await cloudinary.v2.uploader.destroy(product.photos[index].id)
+            
+        }
+
+        // upload and save the images 
+
+        for (let index =0; index<req.files.photos.length; index++) {
+
+            let result = await cloudinary.v2.uploader.upload(
+                req.files.photos[index].tempFilePath,
+                {
+                    folder: "products" , /// folder name ->
+                }
+            );
+
+            imagesArray.push({
+                id: result.public_id,
+                secure_url: result.secure_url
+            })
+        }
+
+        
+        
+    }
+
+    req.body.photos = imagesArray
+    
+    product = await Product.findByIdAndUpdate(req.params.id , req.body , {
+        new: true ,
+        runValidators: true,
+        useFindAndModify:false
+    });
+
+    res.status(200).json({
+        success: true,
+        product
+    })
 })
 
 
+exports.adminDeleteOneProduct = BigPromise(async (req,res, next)=>{
+    const product = await Product.findById(req.params.id);
+
+    let imagesArray = []
+
+    if(!product){
+        return next(new CustomError('No product found with this id' , 401))
+    }
+    
+    for (let index = 0; index < product.photos.length ; index++) {
+        const result = await cloudinary.v2.uploader.destroy(product.photos[index].id)
+        
+    }
+    
+    await product.remove()
+                
+
+    res.status(200).json({
+        success: true,
+        message: "Product was deleted"
+    })
+})
+
+exports.addReview = BigPromise(async (req,res, next)=>{
+   const {rating, comment , productId} = req.body
+
+   const review ={
+       user: req.user._id,
+       name: req.user.name,
+       rating: Number(rating),
+       comment
+   }
+
+   const product = await Product.findById(productId)
+
+   const AlreadyReview = product.reviews.find(
+       (rev) => rev.user.toString() === req.user._id.toString()
+   )
+
+   if(AlreadyReview){
+       product.reviews.forEach((review) =>{
+           if(review.user.toString() ===req.user._id.toString()){
+               review.comment = comment
+               review.rating = rating
+           }
+       })
+       
+
+   }else{
+       product.reviews.push(review)
+       product.numberOfReviews = product.reviews.length
+   }
+
+   // adjust ratings
+    product.ratings = product.reviews.reduce((acc, item) => item.rating +acc, 0) /
+    product.reviews.length
+
+    //save
+    await product.save({validateBeforeSave: false})
+
+    res.status(200).json({
+        success:true
+    })
+})
 
 exports.testProduct =(req,res)=>{
     res.status(200).json({
