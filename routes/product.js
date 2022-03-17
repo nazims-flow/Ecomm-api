@@ -3,13 +3,17 @@ const router = express.Router()
 
 const { isLoggedIn , customRole} = require('../middlewares/user');
 
-const { testProduct, addProduct, getAllProduct ,adminGetAllProduct , getOneProduct , adminUpdateOneProduct, adminDeleteOneProduct} = require('../controllers/productController');
+const { testProduct, addProduct, getAllProduct ,adminGetAllProduct , getOneProduct , adminUpdateOneProduct, adminDeleteOneProduct,addReview , deleteReview ,getOnlyReviewsForOneProduct} = require('../controllers/productController');
 
 router.route('/testproduct').get(testProduct);
 
 // user routes
 router.route('/products').get(getAllProduct);
 router.route('/product/:id').get(getOneProduct);
+router.route('/review').put(isLoggedIn, addReview);
+router.route('/review').delete(isLoggedIn, deleteReview);
+router.route('/reviews').get(isLoggedIn , getOnlyReviewsForOneProduct);
+
 
 
 

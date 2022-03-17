@@ -48,6 +48,11 @@ const productSchema = new mongoose.Schema({
         }
     },
 
+    stock: {
+        type: Number,
+        required: [true, "please add a number in stock"]
+    },
+
     brand: {
         type: String ,
         required : [ true , 'please add a brand for clothing ']
